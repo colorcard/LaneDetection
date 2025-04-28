@@ -23,7 +23,7 @@ jobs:
             cmake_generator: "Visual Studio 17 2022"
             artifact_path: build/Release/lane_detection.exe
           - os: macos-latest
-            cmake_generator: "Unix Makefiles"  # 改为使用Unix Makefiles而不是Xcode
+            cmake_generator: "Unix Makefiles"
             artifact_path: build/lane_detection
 
     steps:
@@ -59,14 +59,22 @@ jobs:
         working-directory: ${{github.workspace}}/build
         run: cmake --build . --config Release
 
-      - name: 列出构建目录内容 (调试用)
+      - name: 列出构建目录内容 (Linux/macOS)
+        if: matrix.os != 'windows-latest'
         shell: bash
         run: |
-          find ${{github.workspace}}/build -type f -name "lane_detection*" | sort
-          ls -la ${{github.workspace}}/build
-          if [ -d "${{github.workspace}}/build/Release" ]; then
-            ls -la ${{github.workspace}}/build/Release
-          fi
+          find "${{github.workspace}}/build" -type f -name "lane_detection*" | sort
+          ls -la "${{github.workspace}}/build"
+
+      - name: 列出构建目录内容 (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path "${{github.workspace}}\build" -Recurse -Filter "lane_detection*" | Select-Object FullName
+          Get-ChildItem -Path "${{github.workspace}}\build" | Format-Table
+          if (Test-Path "${{github.workspace}}\build\Release") {
+            Get-ChildItem -Path "${{github.workspace}}\build\Release" | Format-Table
+          }
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4

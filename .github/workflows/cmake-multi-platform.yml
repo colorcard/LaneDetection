@@ -24,48 +24,48 @@ jobs:
             cmake_generator: "Xcode"
 
     steps:
-    - name: 检出代码
-      uses: actions/checkout@v3
+      - name: 检出代码
+        uses: actions/checkout@v4
 
-    - name: 创建构建目录
-      run: cmake -E make_directory ${{github.workspace}}/build
+      - name: 创建构建目录
+        run: cmake -E make_directory ${{github.workspace}}/build
 
-    - name: 安装依赖 (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libcurl4-openssl-dev
+      - name: 安装依赖 (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libcurl4-openssl-dev
 
-    - name: 下载STB头文件
-      run: |
-        mkdir -p stb_headers
-        cd stb_headers
-        curl -L -o stb_image.h https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
-        curl -L -o stb_image_write.h https://raw.githubusercontent.com/nothings/stb/master/stb_image_write.h
-      shell: bash
+      - name: 下载STB头文件
+        run: |
+          mkdir -p stb_headers
+          cd stb_headers
+          curl -L -o stb_image.h https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
+          curl -L -o stb_image_write.h https://raw.githubusercontent.com/nothings/stb/master/stb_image_write.h
+        shell: bash
 
-    - name: 配置CMake
-      working-directory: ${{github.workspace}}/build
-      run: |
-        cmake .. -G "${{ matrix.cmake_generator }}" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INCLUDE_PATH=${{github.workspace}}/stb_headers
-      env:
-        CFLAGS: "-I${{github.workspace}}/stb_headers"
-        CXXFLAGS: "-I${{github.workspace}}/stb_headers"
+      - name: 配置CMake
+        working-directory: ${{github.workspace}}/build
+        run: |
+          cmake .. -G "${{ matrix.cmake_generator }}" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INCLUDE_PATH=${{github.workspace}}/stb_headers
+        env:
+          CFLAGS: "-I${{github.workspace}}/stb_headers"
+          CXXFLAGS: "-I${{github.workspace}}/stb_headers"
 
-    - name: 构建
-      working-directory: ${{github.workspace}}/build
-      run: cmake --build . --config Release
+      - name: 构建
+        working-directory: ${{github.workspace}}/build
+        run: cmake --build . --config Release
 
-    - name: 上传构建产物 (Linux/macOS)
-      if: matrix.os != 'windows-latest'
-      uses: actions/upload-artifact@v3
-      with:
-        name: lane_detection-${{ matrix.os }}
-        path: ${{github.workspace}}/build/lane_detection
+      - name: 上传构建产物 (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lane_detection-${{ matrix.os }}
+          path: ${{github.workspace}}/build/lane_detection
 
-    - name: 上传构建产物 (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v3
-      with:
-        name: lane_detection-${{ matrix.os }}
-        path: ${{github.workspace}}/build/Release/lane_detection.exe
+      - name: 上传构建产物 (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lane_detection-${{ matrix.os }}
+          path: ${{github.workspace}}/build/Release/lane_detection.exe

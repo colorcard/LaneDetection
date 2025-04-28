@@ -6,7 +6,7 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED True)
 
 # 添加可执行文件
-add_executable(lane_detection lane_detection.c)
+add_executable(lane_detection main.c)
 
 # 在Windows平台上禁用安全函数警告
 if(MSVC)

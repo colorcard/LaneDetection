@@ -18,10 +18,13 @@ jobs:
         include:
           - os: ubuntu-latest
             cmake_generator: "Unix Makefiles"
+            artifact_path: build/lane_detection
           - os: windows-latest
             cmake_generator: "Visual Studio 17 2022"
+            artifact_path: build/Release/lane_detection.exe
           - os: macos-latest
-            cmake_generator: "Xcode"
+            cmake_generator: "Unix Makefiles"  # 改为使用Unix Makefiles而不是Xcode
+            artifact_path: build/lane_detection
 
     steps:
       - name: 检出代码
@@ -56,16 +59,18 @@ jobs:
         working-directory: ${{github.workspace}}/build
         run: cmake --build . --config Release
 
-      - name: 上传构建产物 (Linux/macOS)
-        if: matrix.os != 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: lane_detection-${{ matrix.os }}
-          path: ${{github.workspace}}/build/lane_detection
+      - name: 列出构建目录内容 (调试用)
+        shell: bash
+        run: |
+          find ${{github.workspace}}/build -type f -name "lane_detection*" | sort
+          ls -la ${{github.workspace}}/build
+          if [ -d "${{github.workspace}}/build/Release" ]; then
+            ls -la ${{github.workspace}}/build/Release
+          fi
 
-      - name: 上传构建产物 (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: lane_detection-${{ matrix.os }}
-          path: ${{github.workspace}}/build/Release/lane_detection.exe
+          path: ${{ github.workspace }}/${{ matrix.artifact_path }}
+          if-no-files-found: warn  # 改为警告而不是错误

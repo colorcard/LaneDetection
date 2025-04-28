@@ -6,10 +6,15 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED True)
 
 # 添加可执行文件
-add_executable(lane_detection main.c)
+add_executable(lane_detection lane_detection.c)
 
-# 链接数学库
-target_link_libraries(lane_detection m)
+# 在Windows平台上禁用安全函数警告
+if(MSVC)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+else()
+    # 非Windows平台才链接数学库
+    target_link_libraries(lane_detection m)
+endif()
 
 # 下载STB依赖库
 include(FetchContent)

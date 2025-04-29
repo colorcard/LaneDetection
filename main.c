@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
+
 #include <math.h>
 #include <limits.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -700,7 +702,12 @@ int main(int argc, char *argv[]) {
 //    set_image_twovalues(img_threshold);
 
     printf("应用自适应阈值...\n");
+    clock_t start = clock();
     set_image_adaptive_twovalues();
+    // 在代码执行后计算耗时
+    clock_t end = clock();
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("处理时间: %.5f 秒\n", time_spent);
     printf("自适应阈值处理完成\n");
     // 保存二值化图像
     save_stage_image(output_prefix, "2_binary", image, 1);

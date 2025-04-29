@@ -161,6 +161,66 @@ void set_image_twovalues(uint8_t value) {
     }
 }
 
+// 自适应阈值函数，替代原来的Otsu函数
+// 使用局部区域平均值作为阈值，并添加一个常数C作为偏移
+uint8_t AdaptiveThreshold(uint8_t index[MAX_IMAGE_HEIGHT][MAX_IMAGE_WIDTH]) {
+    // 创建一个临时的二值化图像
+    uint8_t temp_image[MAX_IMAGE_HEIGHT][MAX_IMAGE_WIDTH];
+
+    // 定义局部窗口大小，可根据需要调整
+    const int window_size = 30;
+    const int offset = 5; // 偏移值，可调整
+    const int half_window = window_size / 2;
+
+    for (int i = 0; i < MT9V03X_H; i++) {
+        for (int j = 0; j < MT9V03X_W; j++) {
+            int sum = 0;
+            int count = 0;
+
+            // 计算局部窗口内的平均值
+            for (int wi = -half_window; wi <= half_window; wi++) {
+                for (int wj = -half_window; wj <= half_window; wj++) {
+                    int ni = i + wi;
+                    int nj = j + wj;
+
+                    // 确保在图像范围内
+                    if (ni >= 0 && ni < MT9V03X_H && nj >= 0 && nj < MT9V03X_W) {
+                        sum += index[ni][nj];
+                        count++;
+                    }
+                }
+            }
+
+            // 使用局部平均值减去偏移量作为阈值
+            int local_threshold = sum / count - offset;
+
+            // 二值化
+            if (index[i][j] < local_threshold) {
+                temp_image[i][j] = 0;
+            } else {
+                temp_image[i][j] = 255;
+            }
+        }
+    }
+
+    // 将结果复制到原始图像
+    for (int i = 0; i < MT9V03X_H; i++) {
+        for (int j = 0; j < MT9V03X_W; j++) {
+            image[i][j] = temp_image[i][j];
+        }
+    }
+
+    // 返回一个固定值，因为我们不再需要全局阈值
+    return 128;
+}
+
+// 修改后的图像二值化处理函数，直接使用自适应阈值
+void set_image_adaptive_twovalues() {
+    // 直接调用自适应阈值函数来处理图像
+    img_threshold = AdaptiveThreshold(base_image);
+    // 这里不需要再做二值化，因为AdaptiveThreshold已经完成了二值化
+}
+
 // 寻找基准点
 void find_jidian(uint8_t index[MAX_IMAGE_HEIGHT][MAX_IMAGE_WIDTH]) {
     int mid_w = MT9V03X_W / 2;
@@ -632,12 +692,16 @@ int main(int argc, char *argv[]) {
     save_stage_image(output_prefix, "1_original", base_image, 0);
 
     // 图像处理流程
-    printf("计算Otsu阈值...\n");
-    img_threshold = Ostu(base_image);
-    printf("Otsu阈值: %d\n", img_threshold);
+//    printf("计算Otsu阈值...\n");
+//    img_threshold = Ostu(base_image);
+//    printf("Otsu阈值: %d\n", img_threshold);
+//
+//    printf("二值化图像...\n");
+//    set_image_twovalues(img_threshold);
 
-    printf("二值化图像...\n");
-    set_image_twovalues(img_threshold);
+    printf("应用自适应阈值...\n");
+    set_image_adaptive_twovalues();
+    printf("自适应阈值处理完成\n");
     // 保存二值化图像
     save_stage_image(output_prefix, "2_binary", image, 1);
 

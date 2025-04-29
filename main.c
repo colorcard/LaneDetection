@@ -4,6 +4,8 @@
 #include <string.h>
 #include <math.h>
 #include <limits.h>
+#include <time.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -633,12 +635,21 @@ int main(int argc, char *argv[]) {
 
     // 图像处理流程
     printf("计算Otsu阈值...\n");
-    img_threshold = Ostu(base_image);
-    printf("Otsu阈值: %d\n", img_threshold);
+    clock_t start = clock();
 
-    printf("二值化图像...\n");
+    img_threshold = Ostu(base_image);
+//    printf("Otsu阈值: %d\n", img_threshold);
+
+//    printf("二值化图像...\n");
     set_image_twovalues(img_threshold);
+
+    // 在代码执行后计算耗时
+    clock_t end = clock();
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("处理时间: %.5f 秒\n", time_spent);
     // 保存二值化图像
+
+
     save_stage_image(output_prefix, "2_binary", image, 1);
 
     printf("寻找基准点...\n");

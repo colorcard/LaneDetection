@@ -8,6 +8,8 @@
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+#include <time.h>
+
 
 // 图像处理参数定义
 #define MAX_IMAGE_HEIGHT 240
@@ -159,6 +161,88 @@ void set_image_twovalues(uint8_t value) {
             }
         }
     }
+}
+
+// 添加积分图像相关全局变量
+uint32_t integral_img[MAX_IMAGE_HEIGHT][MAX_IMAGE_WIDTH]; // 积分图像
+
+// 计算积分图像
+void calculateIntegralImage(uint8_t img[MAX_IMAGE_HEIGHT][MAX_IMAGE_WIDTH]) {
+    // 第一个像素
+    integral_img[0][0] = img[0][0];
+
+    // 第一行
+    for (int j = 1; j < MT9V03X_W; j++) {
+        integral_img[0][j] = integral_img[0][j-1] + img[0][j];
+    }
+
+    // 第一列
+    for (int i = 1; i < MT9V03X_H; i++) {
+        integral_img[i][0] = integral_img[i-1][0] + img[i][0];
+    }
+
+    // 其余部分
+    for (int i = 1; i < MT9V03X_H; i++) {
+        for (int j = 1; j < MT9V03X_W; j++) {
+            integral_img[i][j] = img[i][j] + integral_img[i-1][j] + integral_img[i][j-1] - integral_img[i-1][j-1];
+        }
+    }
+}
+
+// 使用积分图像的快速自适应阈值
+uint8_t FastAdaptiveThreshold(uint8_t index[MAX_IMAGE_HEIGHT][MAX_IMAGE_WIDTH]) {
+    // 计算积分图像
+    calculateIntegralImage(index);
+
+    // 定义局部窗口大小，可根据需要调整
+    const int window_size = 30;    // 保持与原来的窗口大小一致
+    const int offset = 5;         // 偏移值，可调整
+    const int half_window = window_size / 2;
+
+    for (int i = 0; i < MT9V03X_H; i++) {
+        for (int j = 0; j < MT9V03X_W; j++) {
+            // 计算窗口的边界（考虑图像边界）
+            int x1 = j - half_window - 1;
+            int y1 = i - half_window - 1;
+            int x2 = j + half_window;
+            int y2 = i + half_window;
+
+            // 边界处理
+            x1 = (x1 < 0) ? -1 : x1;
+            y1 = (y1 < 0) ? -1 : y1;
+            x2 = (x2 >= MT9V03X_W) ? MT9V03X_W - 1 : x2;
+            y2 = (y2 >= MT9V03X_H) ? MT9V03X_H - 1 : y2;
+
+            // 使用积分图像计算区域和
+            uint32_t sum = integral_img[y2][x2];
+            if (x1 >= 0) sum -= integral_img[y2][x1];
+            if (y1 >= 0) sum -= integral_img[y1][x2];
+            if (x1 >= 0 && y1 >= 0) sum += integral_img[y1][x1];
+
+            // 计算窗口内的像素数量
+            int count = (x2 - x1) * (y2 - y1);
+
+            // 使用局部平均值减去偏移量作为阈值
+            int local_threshold = sum / count - offset;
+
+            // 二值化
+            if (index[i][j] < local_threshold) {
+                image[i][j] = 0;
+            } else {
+                image[i][j] = 255;
+            }
+        }
+    }
+
+    // 返回一个固定值，因为我们不再需要全局阈值
+    return 128;
+}
+
+// 修改后的图像二值化处理函数，使用积分图像优化的自适应阈值
+void set_image_adaptive_twovalues() {
+    // 直接调用积分图像优化的自适应阈值函数来处理图像
+    img_threshold = FastAdaptiveThreshold(base_image);
+    // 这里不需要再做二值化，因为FastAdaptiveThreshold已经完成了二值化
 }
 
 // 寻找基准点
@@ -631,13 +715,24 @@ int main(int argc, char *argv[]) {
     // 保存原始灰度图
     save_stage_image(output_prefix, "1_original", base_image, 0);
 
-    // 图像处理流程
-    printf("计算Otsu阈值...\n");
-    img_threshold = Ostu(base_image);
-    printf("Otsu阈值: %d\n", img_threshold);
+//    // 图像处理流程
+//    printf("计算Otsu阈值...\n");
+//    img_threshold = Ostu(base_image);
+//    printf("Otsu阈值: %d\n", img_threshold);
+//
+//    printf("二值化图像...\n");
+//    set_image_twovalues(img_threshold);
 
-    printf("二值化图像...\n");
-    set_image_twovalues(img_threshold);
+    printf("图像积分法...\n");
+
+    clock_t start = clock();
+    set_image_adaptive_twovalues();
+
+    clock_t end = clock();
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("处理时间: %.5f 秒\n", time_spent);
+
+    printf("图像积分法处理完成\n");
     // 保存二值化图像
     save_stage_image(output_prefix, "2_binary", image, 1);
 

@@ -16,6 +16,7 @@
 #define MAX_IMAGE_WIDTH 320
 #define GrayScale 256
 #define grayscale 256
+#define uint8 uint8_t
 
 // 边缘提取参数
 #define jidian_search_line 120
@@ -436,6 +437,44 @@ void crossroad_completions(uint8_t img[MAX_IMAGE_HEIGHT][MAX_IMAGE_WIDTH],
     }
 }
 
+void crossroad_completion(uint8_t img[MAX_IMAGE_HEIGHT][MAX_IMAGE_WIDTH],
+                          uint8_t boundary[MAX_IMAGE_HEIGHT],
+                          uint8_t threshold) {
+    uint8_t temp_flag = find_corner_point(boundary, threshold);
+    if(temp_flag != 255) { // 找到才开启补线
+        float level = 0; // 先进行浮点运算，避免整型运算的向下取整造成过大误差
+        float sample_count = 0;
+
+        // 计算平均斜率
+        for(int i = 113; i > temp_flag; i--) {
+            level += (float)boundary[i] - (float)boundary[i-1];
+            sample_count++;
+        }
+
+        if(sample_count > 0) {
+            level = (level) / sample_count; // 计算平均增量
+            uint8 aver_level = (uint8)(level)+1;//向下取整
+
+            // 从角点向上延伸边界
+            for(int i = temp_flag; i > 0; i--) {
+                int16_t new_x = boundary[temp_flag] - level * (temp_flag - i);
+
+                // 边界检查
+                if(new_x < 1) new_x = 1;
+                if(new_x >= MT9V03X_W-1) new_x = MT9V03X_W-2;
+
+                if(img[i][new_x] != 0) {
+                    img[i][new_x] = 0; // 将沿线标记为黑色
+
+                    boundary[i] = (uint8_t)new_x; // 更新边界信息
+                } else {
+                    break; // 遇到黑点停止
+                }
+            }
+        }
+    }
+}
+
 // 处理图像，提取边线
 void image_deal(uint8_t index[MAX_IMAGE_HEIGHT][MAX_IMAGE_WIDTH]) {
     uint8_t left_point = left_jidian;
@@ -556,8 +595,8 @@ void image_deal(uint8_t index[MAX_IMAGE_HEIGHT][MAX_IMAGE_WIDTH]) {
     }
 
     // 十字路口边线补全
-    crossroad_completions(index, left_line_list, 4);
-    crossroad_completions(index, right_line_list, 4);
+    crossroad_completion(index, left_line_list, 4);
+    crossroad_completion(index, right_line_list, 4);
 
     // 更新中线
     for(int i = 0; i < MT9V03X_H; i++) {
